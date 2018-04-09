@@ -1,55 +1,100 @@
+import { Store } from './store.js';
+import { Feature } from './feature.js';
+
 ((root) => {
-    const DEFAULTS = {
-        featureMax: 0,
-        featureStep: 1
-    };
+    function createStore(initialState = {}) {
+        const reducers = {
+            counter(state = initialState, action) {
+                if (!action || !action.type) {
+                    return state;
+                }
 
-    class Feature {
-        constructor(name) {
-            this.name = name;
-            this.max = null;
-            this.step = null;
-        }
+                const id = action && action.payload.id;
+                const { step, spend } = state;
+                const features = cloneFeatures(state.features);
+                const feature = features.get(id);
 
-        setMax(value) {
-            this.max = value;
-        }
+                switch (action.type) {
+                    case 'increment':
+                        feature.value += step;
+                        features.set(id, feature);
+                        return {
+                            ...state,
+                            features,
+                            spend: spend + step
+                        };
+                    case 'decrement':
+                        feature.value -= step;
+                        features.set(id, feature);
+                        return {
+                            ...state,
+                            features,
+                            spend: spend - step
+                        };
+                    default:
+                        console.warn(`The action ${action.type} is not defined`);
+                        return state;
+                }
+            }
+        };
 
-        setStep(value) {
-            this.step = value;
-        }
+        return new Store(reducers, initialState);
     }
 
-    class PointsPool {
-        constructor(max) {
-            this.max = 0;
-            this.pointsLeft = this.max;
-        }
+    function createFeature(id, options = {}) {
+        return new Feature(id, {
+            max: options.max,
+            step: options.step
+        });
+    }
 
-        setMax(value) {
-            this.max = value;
-        }
+    function cloneFeatures(features) {
+        const cloned = new Map();
+
+        features.forEach((feature) => {
+            cloned.set(feature.id, Object.assign({}, feature));
+        });
+
+        return cloned;
     }
 
     class MrRange {
-        constructor(pointsMax) {
-            this.points = new PointsPool(pointsMax);
+        constructor(featureNames, options = {}) {
             this.features = new Map();
+
+            featureNames.forEach((name) => {
+                this.features.set(name, createFeature(name));
+            });
+
+            this.store = createStore({
+                counter: {
+                    features: this.features,
+                    step: options.step || 1,
+                    total: options.total || 10,
+                    spend: options.spend || 0
+                }
+            });
         }
 
-        createFeature(name, options = {}) {
-            const feature = new Feature(name);
-
-            feature.setMax = options.max || DEFAULTS.featureMax;
-            feature.setStep = options.step || DEFAULTS.featureStep;
-
-            this.features.set(name, feature);
+        increment(id) {
+            this.store.dispatch({
+                type: 'increment',
+                payload: { id }
+            });
         }
 
-        setPoints(n) {
-            this.points = n;
+        decrement(id) {
+            this.store.dispatch({
+                type: 'decrement',
+                payload: { id }
+            });
+        }
+
+        onChange(fn) {
+            this.store.subscribe((state) => fn(state));
         }
     }
 
+    // Expose lib
     root.MrRange = MrRange;
 })(window);

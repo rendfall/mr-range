@@ -9,19 +9,22 @@ import { Feature } from './feature.js';
                     return state;
                 }
 
-                const id = action && action.payload.id;
                 const { step, spend } = state;
+                const payload = action && action.payload || {};
                 const features = cloneFeatures(state.features);
-                const feature = features.get(id);
+                const feature = features.get(payload.id);
+
+                const isPointsDistributed = spend >= feature.max;
+                const pointsLeft = (feature.max - spend);
 
                 switch (action.type) {
                     case 'increment':
-                        if (feature.value >= feature.max) {
+                        if (isPointsDistributed) {
                             return { ...state };
                         }
 
                         feature.value += step;
-                        features.set(id, feature);
+                        features.set(payload.id, feature);
 
                         return {
                             ...state,
@@ -29,17 +32,30 @@ import { Feature } from './feature.js';
                             spend: spend + step
                         };
                     case 'decrement':
-                        if (feature.value <= feature.min) {
+                        if (spend === 0) {
                             return { ...state };
                         }
 
                         feature.value -= step;
-                        features.set(id, feature);
+                        features.set(payload.id, feature);
 
                         return {
                             ...state,
                             features,
                             spend: spend - step
+                        };
+                    case 'setValue':
+                        if (pointsLeft < payload.value) {
+                            return { ...state };
+                        }
+
+                        feature.value = payload.value;
+                        features.set(payload.id, feature);
+
+                        return {
+                            ...state,
+                            features,
+                            spend: spend + payload.value
                         };
                     default:
                         console.warn(`The action ${action.type} is not defined`);
@@ -97,6 +113,13 @@ import { Feature } from './feature.js';
             this.store.dispatch({
                 type: 'decrement',
                 payload: { id }
+            });
+        }
+
+        setValue(id, value) {
+            this.store.dispatch({
+                type: 'setValue',
+                payload: { id, value }
             });
         }
 

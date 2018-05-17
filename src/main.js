@@ -117,6 +117,13 @@ import { Feature } from './feature.js';
         }
 
         setValue(id, value) {
+            value = Number(value);
+
+            if (Number.isNaN(value)) {
+                console.error('Value must be a number');
+                return;
+            }
+
             this.store.dispatch({
                 type: 'setValue',
                 payload: { id, value }

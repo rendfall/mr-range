@@ -16,16 +16,26 @@ import { Feature } from './feature.js';
 
                 switch (action.type) {
                     case 'increment':
+                        if (feature.value >= feature.max) {
+                            return { ...state };
+                        }
+
                         feature.value += step;
                         features.set(id, feature);
+
                         return {
                             ...state,
                             features,
                             spend: spend + step
                         };
                     case 'decrement':
+                        if (feature.value <= feature.min) {
+                            return { ...state };
+                        }
+
                         feature.value -= step;
                         features.set(id, feature);
+
                         return {
                             ...state,
                             features,
@@ -33,7 +43,7 @@ import { Feature } from './feature.js';
                         };
                     default:
                         console.warn(`The action ${action.type} is not defined`);
-                        return state;
+                        return { ...state };
                 }
             }
         };
